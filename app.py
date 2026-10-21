@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 # Page Configuration & SEO Meta Tags
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="DEV AI TOONS - Professional 3D Studio",
+    page_title="DEV AI TOONS 1 - Professional 3D Studio",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
