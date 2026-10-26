@@ -1,17 +1,19 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import os
+from moviepy.editor import VideoFileClip, concatenate_videoclips, TextClip, CompositeVideoClip
+import tempfile
 
 # ---------------------------------------------------------
-# Page Configuration & SEO
+# Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="DEV-AI-TOONS-1 Studio",
+    page_title="Edit with Dev - Private Video Studio",
     page_icon="🎬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Hide Streamlit standard UI elements
+# Hide Streamlit default elements
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -21,152 +23,179 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Personal Password Protection
+# Session State Initialization for Flow & Security
 # ---------------------------------------------------------
-PERSONAL_PASSWORD = "534547"
+if "step" not in st.session_state:
+    st.session_state["step"] = "welcome"  # Options: welcome, login, studio
+
+if "attempts" not in st.session_state:
+    st.session_state["attempts"] = 0
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-def verify_password():
-    if st.session_state.get("pass_input") == PERSONAL_PASSWORD:
-        st.session_state["authenticated"] = True
-    else:
-        st.error("❌ चुकीचा पासवर्ड! योग्य पासवर्ड एंटर करा.")
-
-if not st.session_state["authenticated"]:
-    st.title("🔒 DEV-AI-TOONS-1 - Private Access")
-    st.write("ॲप वापरण्यासाठी तुमचा वैयक्तिक पासवर्ड टाका.")
-    st.text_input("Enter Personal Password:", type="password", key="pass_input", on_change=verify_password)
-    st.button("Open Studio", on_click=verify_password)
-    st.stop()
+PERSONAL_PASSWORD = "534547"
+MAX_ATTEMPTS = 3
 
 # ---------------------------------------------------------
-# 3D Models Library
+# Screen 1: Welcome Screen
 # ---------------------------------------------------------
-CHARACTER_MODELS = {
-    "Stylized Cartoon Character": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Fox/glTF-Binary/Fox.glb",
-    "Realistic Human Avatar": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb",
-    "Monster / Cyborg Creature": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BrainStem/glTF-Binary/BrainStem.glb",
-    "Cute Animal / Mascot Character": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb"
-}
-
-# ---------------------------------------------------------
-# Main App Interface
-# ---------------------------------------------------------
-st.title("🎬 DEV-AI-TOONS-1 - 3D Character Studio")
-st.caption("⚡ Unlimited Free 3D Character Generator | Meshy AI Style Private Studio")
-
-st.sidebar.title("👤 DEV-AI-TOONS-1")
-st.sidebar.success("🔑 Authenticated")
-st.sidebar.markdown("---")
-st.sidebar.metric("Credits", "♾️ Unlimited Free")
-
-col_control, col_viewport = st.columns([1, 1.2])
-
-with col_control:
-    st.header("⚙️ Character Generator")
+if st.session_state["step"] == "welcome":
+    st.markdown("<h1 style='text-align: center; color: #ff4b4b;'>🎬 Welcome to Edit with Dev</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: gray;'>Your Personal, Secure, VPN-Free Video Studio</h3>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    char_style = st.selectbox(
-        "Select Character Style:",
-        ["Stylized Cartoon Character", "Realistic Human Avatar", "Monster / Cyborg Creature", "Cute Animal / Mascot Character"]
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("🚀 Start App", type="primary", use_container_width=True):
+            st.session_state["step"] = "login"
+            st.rerun()
+
+# ---------------------------------------------------------
+# Screen 2: Security PIN Login Screen (3 Chances Limit)
+# ---------------------------------------------------------
+elif st.session_state["step"] == "login":
+    st.title("🔒 Edit with Dev - Security Verification")
+    st.write("Krupaya aplaya secure app madhe pravesh karnyasathi 6-digit PIN taka.")
+    
+    # Check if attempts exceeded
+    if st.session_state["attempts"] >= MAX_ATTEMPTS:
+        st.error("❌ Wrong password entered! Maximum attempts reached. Access Denied.")
+        if st.button("🔄 Try Again"):
+            st.session_state["attempts"] = 0
+            st.rerun()
+        st.stop()
+        
+    entered_pass = st.text_input("Enter 6-Digit PIN:", type="password")
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("Submit PIN", type="primary"):
+            if entered_pass == PERSONAL_PASSWORD:
+                st.session_state["authenticated"] = True
+                st.session_state["step"] = "studio"
+                st.rerun()
+            else:
+                st.session_state["attempts"] += 1
+                remaining = MAX_ATTEMPTS - st.session_state["attempts"]
+                st.error(f"❌ Chukicha password! Urlele prayatna (Attempts left): {remaining}")
+
+# ---------------------------------------------------------
+# Screen 3: Main Video Studio (CapCut Style Features)
+# ---------------------------------------------------------
+elif st.session_state["step"] == "studio" and st.session_state["authenticated"]:
+    # Show Congratulations on successful login (one time notice)
+    if "shown_congrats" not in st.session_state:
+        st.success("🎉 Congratulations! Welcome to your private video editing studio.")
+        st.session_state["shown_congrats"] = True
+        
+    st.title("🎬 Edit with Dev - Private Video Studio")
+    st.caption("⚡ Fast, Secure, VPN-Free Browser Video Editor")
+
+    st.sidebar.title("👤 EDIT-DEV-STUDIO")
+    st.sidebar.success("🔑 Authenticated Successfully")
+    st.sidebar.markdown("---")
+    st.sidebar.info("💡 Tumche video clips upload kara ani tools vaprun edit kara.")
+
+    # Editing Tools Selection
+    edit_option = st.sidebar.selectbox(
+        "Choose Editing Tool:",
+        ["Trim / Cut Video", "Merge Multiple Videos", "Add Text to Video"]
     )
-    
-    gen_mode = st.radio("Input Source:", ["Text Prompt", "Reference Image Upload"])
-    
-    if gen_mode == "Text Prompt":
-        prompt = st.text_area("Describe Character:", "A high quality stylized cartoon character, masterpiece 3d asset")
-    else:
-        uploaded_img = st.file_uploader("Upload Sketch/Photo:", type=["png", "jpg", "jpeg"])
-        
+
     st.markdown("---")
-    art_style = st.selectbox("Render Style:", ["PBR Realistic", "Anime / Stylized", "Low-Poly Game", "Cinematic Clay"])
-    
-    if st.button("✨ Generate 3D Character", type="primary"):
-        with st.spinner("🚀 Generating 3D Character Mesh & Textures..."):
-            import time
-            time.sleep(1.5)
-            st.session_state["active_model"] = CHARACTER_MODELS[char_style]
-            st.session_state["active_style"] = char_style
-            st.session_state["has_generated"] = True
-            st.success("🎉 Character Generated Successfully!")
 
-with col_viewport:
-    st.header("🖼️ 3D Viewport")
-    
-    if st.session_state.get("has_generated", False):
-        active_url = st.session_state.get("active_model", CHARACTER_MODELS["Stylized Cartoon Character"])
+    # Tool 1: Trim / Cut Video
+    if edit_option == "Trim / Cut Video":
+        st.header("✂️ Video Trimming Tool")
+        uploaded_video = st.file_uploader("Upload Video File for Cutting:", type=["mp4", "mov", "avi"])
         
-        viewport_code = f"""
-        <div id="canvas-container" style="width: 100%; height: 460px; background: #0e0e12; border-radius: 12px; border: 1px solid #2a2a35; overflow: hidden; position: relative;">
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-            <script>
-                const container = document.getElementById('canvas-container');
-                const scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x0e0e12);
+        if uploaded_video is not None:
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            tfile.write(uploaded_video.read())
+            
+            clip = VideoFileClip(tfile.name)
+            duration = int(clip.duration)
+            
+            st.video(tfile.name)
+            st.write(f"⏱️ Total Video Duration: {duration} seconds")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                start_time = st.number_input("Start Time (seconds):", min_value=0, max_value=duration, value=0)
+            with col2:
+                end_time = st.number_input("End Time (seconds):", min_value=0, max_value=duration, value=min(5, duration))
+                
+            if st.button("✨ Trim & Process Video", type="primary"):
+                if start_time >= end_time:
+                    st.error("❌ Start time he End time peksha kami asle pahije!")
+                else:
+                    with st.spinner("🔄 Processing video..."):
+                        trimmed_clip = clip.subclip(start_time, end_time)
+                        output_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+                        trimmed_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+                        
+                        st.success("🎉 Video successfully trimmed!")
+                        st.video(output_path)
+                        
+                        with open(output_path, "rb") as file:
+                            st.download_button("📥 Download Trimmed Video", file, file_name="trimmed_video.mp4", mime="video/mp4", use_container_width=True)
 
-                const camera = new THREE.PerspectiveCamera(45, container.clientWidth / 460, 0.1, 1000);
-                camera.position.set(0, 1.8, 4.5);
-
-                const renderer = new THREE.WebGLRenderer({{ antialias: true }});
-                renderer.setSize(container.clientWidth, 460);
-                renderer.setPixelRatio(window.devicePixelRatio);
-                container.appendChild(renderer.domElement);
-
-                const controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-
-                const ambientLight = new THREE.AmbientLight(0xffffff, 1.3);
-                scene.add(ambientLight);
-
-                const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
-                mainLight.position.set(5, 10, 7);
-                scene.add(mainLight);
-
-                const gridHelper = new THREE.GridHelper(10, 10, 0x00ffcc, 0x333344);
-                scene.add(gridHelper);
-
-                const loader = new THREE.GLTFLoader();
-                loader.load('{active_url}', function (gltf) {{
-                    const model = gltf.scene;
-                    const box = new THREE.Box3().setFromObject(model);
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = 2.2 / maxDim;
-                    model.scale.set(scale, scale, scale);
+    # Tool 2: Merge Multiple Videos
+    elif edit_option == "Merge Multiple Videos":
+        st.header("🔗 Video Merger Tool")
+        uploaded_videos = st.file_uploader("Upload 2 or more Video files to join:", type=["mp4", "mov", "avi"], accept_multiple_files=True)
+        
+        if uploaded_videos and len(uploaded_videos) > 1:
+            st.write(f"📁 Total Videos Selected: {len(uploaded_videos)}")
+            
+            if st.button("✨ Merge Videos Together", type="primary"):
+                with st.spinner("🔄 Joining video clips..."):
+                    video_clips = []
+                    temp_files = []
                     
-                    const center = box.getCenter(new THREE.Vector3());
-                    model.position.sub(center.multiplyScalar(scale));
-                    model.position.y += size.y * scale / 2;
+                    for v in uploaded_videos:
+                        tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+                        tfile.write(v.read())
+                        temp_files.append(tfile.name)
+                        video_clips.append(VideoFileClip(tfile.name))
+                        
+                    final_clip = concatenate_videoclips(video_clips)
+                    output_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+                    final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+                    
+                    st.success("🎉 Videos merged successfully!")
+                    st.video(output_path)
+                    
+                    with open(output_path, "rb") as file:
+                        st.download_button("📥 Download Merged Video", file, file_name="merged_video.mp4", mime="video/mp4", use_container_width=True)
+        else:
+            st.info("👈 Krupaya kamit kamit don video files upload kara.")
 
-                    scene.add(model);
-                }});
-
-                function animate() {{
-                    requestAnimationFrame(animate);
-                    controls.update();
-                    renderer.render(scene, camera);
-                }}
-                animate();
-
-                window.addEventListener('resize', () => {{
-                    camera.aspect = container.clientWidth / 460;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, 460);
-                }});
-            </script>
-        </div>
-        """
-        components.html(viewport_code, height=470)
+    # Tool 3: Add Text Overlay
+    elif edit_option == "Add Text to Video":
+        st.header("📝 Add Text / Watermark to Video")
+        uploaded_video = st.file_uploader("Upload Video File:", type=["mp4", "mov", "avi"])
         
-        st.download_button(
-            label="📥 Download .GLB Character Model",
-            data=b"GLB Binary Data",
-            file_name=f"{st.session_state.get('active_style', 'character').replace(' ', '_')}.glb",
-            mime="model/gltf-binary",
-            use_container_width=True
-        )
-    else:
-        st.info("👈 डाव्या बाजूने स्टाइल निवडून **'Generate 3D Character'** वर क्लिक करा.")
+        user_text = st.text_input("Enter Text to display on Video:", "Edit with Dev")
+        
+        if uploaded_video is not None and user_text:
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            tfile.write(uploaded_video.read())
+            
+            if st.button("✨ Apply Text & Generate", type="primary"):
+                with st.spinner("🔄 Adding text overlay..."):
+                    clip = VideoFileClip(tfile.name)
+                    
+                    txt_clip = TextClip(user_text, fontsize=50, color='white', bg_color='black')
+                    txt_clip = txt_clip.set_position('bottom').set_duration(clip.duration)
+                    
+                    result_clip = CompositeVideoClip([clip, txt_clip])
+                    output_path = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4').name
+                    result_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
+                    
+                    st.success("🎉 Text added successfully!")
+                    st.video(output_path)
+                    
+                    with open(output_path, "rb") as file:
+                        st.download_button("📥 Download Edited Video", file, file_name="text_video.mp4", mime="video/mp4", use_container_width=True)
